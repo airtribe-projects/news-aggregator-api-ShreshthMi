@@ -3,6 +3,7 @@ const jwt = require('jsonwebtoken');
 const userStore = require('../store/userStore');
 
 const SALT_ROUNDS = 10;
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const jwtSecret = () => process.env.JWT_SECRET || 'dev-fallback-secret-change-me';
 const jwtExpiresIn = () => process.env.JWT_EXPIRES_IN || '1h';
 
@@ -13,7 +14,7 @@ async function signup(req, res, next) {
         if (!name || !email || !password) {
             return res.status(400).json({ error: 'name, email, and password are required' });
         }
-        if (typeof email !== 'string' || !email.includes('@')) {
+        if (typeof email !== 'string' || !EMAIL_REGEX.test(email)) {
             return res.status(400).json({ error: 'A valid email is required' });
         }
         if (typeof password !== 'string' || password.length < 6) {
