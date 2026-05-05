@@ -48,6 +48,20 @@ async function markFavorite(req, res, next) {
     }
 }
 
+async function searchNews(req, res, next) {
+    try {
+        const keyword = (req.params.keyword || '').trim();
+        if (!keyword) {
+            return res.status(400).json({ error: 'Search keyword is required' });
+        }
+        const articles = await newsService.fetchNews([keyword]);
+        const enriched = articles.map((a) => articleStore.register(a));
+        return res.status(200).json({ news: enriched });
+    } catch (err) {
+        return next(err);
+    }
+}
+
 async function getRead(req, res, next) {
     try {
         const user = userStore.findByEmail(req.user.email);
@@ -78,4 +92,4 @@ async function getFavorites(req, res, next) {
     }
 }
 
-module.exports = { getNews, markRead, markFavorite, getRead, getFavorites };
+module.exports = { getNews, searchNews, markRead, markFavorite, getRead, getFavorites };

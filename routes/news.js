@@ -7,6 +7,7 @@ const router = express.Router();
 // Specific paths first so they don't get shadowed by /:id/...
 router.get('/read', requireAuth, newsController.getRead);
 router.get('/favorites', requireAuth, newsController.getFavorites);
+router.get('/search/:keyword', requireAuth, newsController.searchNews);
 
 router.get('/', requireAuth, newsController.getNews);
 
