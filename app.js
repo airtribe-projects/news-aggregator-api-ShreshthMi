@@ -1,17 +1,29 @@
+require('dotenv').config();
+
 const express = require('express');
+const usersRouter = require('./routes/users');
+const newsRouter = require('./routes/news');
+const userController = require('./controllers/userController');
+const { requireAuth } = require('./middleware/auth');
+const { notFound, errorHandler } = require('./middleware/errorHandler');
+
 const app = express();
-const port = 3000;
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-app.listen(port, (err) => {
-    if (err) {
-        return console.log('Something bad happened', err);
-    }
-    console.log(`Server is listening on ${port}`);
-});
+app.use('/users', usersRouter);
+app.use('/news', newsRouter);
 
+// Aliases for the literal paths named in the assignment brief
+// Step 2 — auth
+app.post('/register', userController.signup);
+app.post('/login', userController.login);
+// Step 3 — preferences
+app.get('/preferences', requireAuth, userController.getPreferences);
+app.put('/preferences', requireAuth, userController.updatePreferences);
 
+app.use(notFound);
+app.use(errorHandler);
 
 module.exports = app;
