@@ -65,4 +65,32 @@ async function login(req, res, next) {
     }
 }
 
-module.exports = { signup, login };
+async function getPreferences(req, res, next) {
+    try {
+        const user = userStore.findByEmail(req.user.email);
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        return res.status(200).json({ preferences: user.preferences });
+    } catch (err) {
+        return next(err);
+    }
+}
+
+async function updatePreferences(req, res, next) {
+    try {
+        const { preferences } = req.body || {};
+        if (!Array.isArray(preferences) || !preferences.every((p) => typeof p === 'string')) {
+            return res.status(400).json({ error: 'preferences must be an array of strings' });
+        }
+        const user = userStore.updatePreferences(req.user.email, preferences);
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        return res.status(200).json({ preferences: user.preferences });
+    } catch (err) {
+        return next(err);
+    }
+}
+
+module.exports = { signup, login, getPreferences, updatePreferences };
