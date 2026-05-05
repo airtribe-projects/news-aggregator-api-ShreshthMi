@@ -8,8 +8,9 @@ function requireAuth(req, res, next) {
         return res.status(401).json({ error: 'Missing or malformed Authorization header' });
     }
 
+    const secret = process.env.JWT_SECRET || 'dev-fallback-secret-change-me';
     try {
-        const payload = jwt.verify(token, process.env.JWT_SECRET);
+        const payload = jwt.verify(token, secret);
         req.user = { email: payload.email };
         return next();
     } catch (err) {
