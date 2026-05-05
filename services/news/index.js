@@ -1,8 +1,11 @@
 const cache = require('./cache');
+const userStore = require('../../store/userStore');
 
 const providers = {
     gnews: require('./providers/gnews'),
 };
+
+let refreshTimer = null;
 
 function getProvider() {
     const name = process.env.NEWS_PROVIDER || 'gnews';
@@ -56,4 +59,43 @@ function invalidatePreferences(preferences) {
     cache.delete(cacheKeyFor(preferences));
 }
 
-module.exports = { fetchNews, invalidatePreferences };
+async function refreshAll() {
+    const seen = new Set();
+    let refreshed = 0;
+    for (const user of userStore.allUsers()) {
+        const key = cacheKeyFor(user.preferences);
+        if (seen.has(key)) continue;
+        seen.add(key);
+        cache.delete(key);
+        try {
+            await fetchNews(user.preferences);
+            refreshed += 1;
+        } catch (err) {
+            console.warn(`[refresh] failed for ${key}: ${err.message}`);
+        }
+    }
+    console.log(`[refresh] refreshed ${refreshed} cache entr${refreshed === 1 ? 'y' : 'ies'}`);
+    return refreshed;
+}
+
+function startPeriodicRefresh(intervalMs = 5 * 60 * 1000) {
+    if (refreshTimer) return;
+    refreshTimer = setInterval(() => {
+        refreshAll().catch((err) => console.error('[refresh] error:', err));
+    }, intervalMs);
+}
+
+function stopPeriodicRefresh() {
+    if (refreshTimer) {
+        clearInterval(refreshTimer);
+        refreshTimer = null;
+    }
+}
+
+module.exports = {
+    fetchNews,
+    invalidatePreferences,
+    refreshAll,
+    startPeriodicRefresh,
+    stopPeriodicRefresh,
+};
