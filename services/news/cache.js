@@ -14,8 +14,12 @@ function set(key, value, ttlSeconds) {
     store.set(key, { value, expiresAt: Date.now() + ttlSeconds * 1000 });
 }
 
+function remove(key) {
+    store.delete(key);
+}
+
 function clear() {
     store.clear();
 }
 
-module.exports = { get, set, clear };
+module.exports = { get, set, delete: remove, clear };

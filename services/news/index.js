@@ -20,11 +20,17 @@ function buildQuery(preferences) {
     return preferences.join(' OR ');
 }
 
+function cacheKeyFor(preferences) {
+    const provider = getProvider();
+    const sorted = Array.isArray(preferences) ? [...preferences].sort() : [];
+    return `${provider.name}:${buildQuery(sorted)}`;
+}
+
 async function fetchNews(preferences) {
     const provider = getProvider();
     const apiKey = process.env.NEWS_API_KEY;
     const query = buildQuery(preferences);
-    const cacheKey = `${provider.name}:${query}`;
+    const cacheKey = cacheKeyFor(preferences);
     const ttl = Number(process.env.NEWS_CACHE_TTL_SECONDS) || 600;
 
     const cached = cache.get(cacheKey);
@@ -40,9 +46,14 @@ async function fetchNews(preferences) {
         cache.set(cacheKey, articles, ttl);
         return articles;
     } catch (err) {
-        console.warn(`[news] ${provider.name} fetch failed: ${err.message}`);
-        return [];
+        const wrapped = new Error(`Upstream news provider failed: ${err.message}`);
+        wrapped.status = 502;
+        throw wrapped;
     }
 }
 
-module.exports = { fetchNews };
+function invalidatePreferences(preferences) {
+    cache.delete(cacheKeyFor(preferences));
+}
+
+module.exports = { fetchNews, invalidatePreferences };

@@ -116,10 +116,9 @@ curl http://localhost:3000/news \
   -H "Authorization: Bearer $TOKEN"
 ```
 
-- `200 OK` — `{ news: [{ title, description, url, source, publishedAt }, ...] }`
+- `200 OK` — `{ news: [{ title, description, url, source, publishedAt }, ...] }`. When `NEWS_API_KEY` is unset, the endpoint returns `{ news: [] }` with `200` &mdash; this is intentional graceful degradation so a fresh clone can run `npm test` without provider credentials. A warning is logged server-side.
 - `401 Unauthorized` — missing or invalid token
-
-If `NEWS_API_KEY` is unset or the upstream call fails, the endpoint still returns `200` with `news: []` and logs a warning server-side.
+- `502 Bad Gateway` — `{ error: "Upstream service error" }` when the API key is configured but the provider call fails (network error, non-2xx response, etc.). The underlying error is logged server-side; clients only see the public message.
 
 ## Architecture
 
@@ -154,7 +153,11 @@ module.exports = {
 
 ### Cache
 
-`services/news/cache.js` is a simple `Map`-backed TTL cache keyed by `provider:query`. The TTL is configurable via `NEWS_CACHE_TTL_SECONDS`. The cache is in-memory only and resets on process restart, which is appropriate for this assignment.
+`services/news/cache.js` is a simple `Map`-backed TTL cache keyed by `provider:sorted-prefs-query`. The TTL is configurable via `NEWS_CACHE_TTL_SECONDS`. The cache is in-memory only and resets on process restart, which is appropriate for this assignment.
+
+The cache is **shared across users** &mdash; two users with the same preferences serve from the same entry, which keeps free-tier quota in check. Preferences are sorted before building the key so `[a, b]` and `[b, a]` hit the same cache entry.
+
+**Explicit invalidation on `PUT /users/preferences`:** before persisting the new preferences, the controller calls `newsService.invalidatePreferences(oldPrefs)` to evict the cache entry for the user's previous preferences. This guarantees that a subsequent `GET /news` for those previous preferences cannot serve a stale TTL-window response. The trade-off is that other users sharing those old preferences also take one cache miss; that is the safe correctness choice over leaving potentially stale data.
 
 ### User store
 
